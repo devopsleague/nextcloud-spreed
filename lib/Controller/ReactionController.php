@@ -43,7 +43,6 @@ class ReactionController extends AEnvironmentAwareController {
 								CommentsManager $commentsManager,
 								ReactionManager $reactionManager) {
 		parent::__construct($appName, $request);
-
 		$this->commentsManager = $commentsManager;
 		$this->reactionManager = $reactionManager;
 	}
@@ -81,6 +80,40 @@ class ReactionController extends AEnvironmentAwareController {
 
 		try {
 			$this->reactionManager->addReactionMessage($this->getRoom(), $participant, $messageId, $reaction);
+		} catch (\Exception $e) {
+			return new DataResponse([], Http::STATUS_BAD_REQUEST);
+		}
+
+		return new DataResponse([], Http::STATUS_CREATED);
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @RequireParticipant
+	 * @RequireReadWriteConversation
+	 * @RequireModeratorOrNoLobby
+	 *
+	 * @param int $messageId for reaction
+	 * @param string $reaction the reaction emoji
+	 * @return DataResponse
+	 */
+	public function delete(int $messageId, string $reaction): DataResponse {
+		$participant = $this->getParticipant();
+		try {
+			// Verify if messageId is of room
+			$this->commentsManager->getComment($this->getRoom(), (string) $messageId);
+		} catch (NotFoundException $e) {
+			return new DataResponse([], Http::STATUS_NOT_FOUND);
+		}
+
+		try {
+			$this->reactionManager->deleteReactionMessage(
+				$participant,
+				$messageId,
+				$reaction
+			);
+		} catch (NotFoundException $e) {
+			return new DataResponse([], Http::STATUS_NOT_FOUND);
 		} catch (\Exception $e) {
 			return new DataResponse([], Http::STATUS_BAD_REQUEST);
 		}
